@@ -1,4 +1,6 @@
+import requests
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 from quizzes.models import Question, Quiz
 
@@ -18,3 +20,17 @@ class QuizListSerializer(serializers.ModelSerializer):
     def get_questions(self, obj):
         questions = Question.objects.filter(quiz_id=obj.id)
         return QuestionsListSerializer(questions, many=True).data
+
+class QuizCreateSerializer(serializers.ModelSerializer):
+    url = serializers.URLField(source='video_url')
+    class Meta:
+        model = Quiz
+        fields = ['url']
+
+    def validate_url(self, obj):
+        try:
+            response = requests.head(obj)
+            return response
+
+        except Exception as e:
+            raise ValidationError(e)
