@@ -30,7 +30,7 @@ class QuizCreateSerializer(serializers.ModelSerializer):
     def validate_url(self, obj):
         try:
             response = requests.head(obj)
-            return response
+            return obj
 
         except Exception as e:
             raise ValidationError(e)
