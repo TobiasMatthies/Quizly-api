@@ -1,5 +1,8 @@
+import json
+
 import whisper
 import yt_dlp
+from google import genai
 from rest_framework import status
 from rest_framework.generics import CreateAPIView, ListAPIView
 from rest_framework.response import Response
@@ -10,6 +13,8 @@ from quizzes.models import Quiz
 
 from .permissions import IsAuthenticatedFromCookie
 from .serializers import QuizCreateSerializer, QuizListSerializer
+
+client = genai.Client()
 
 
 class QuizCreateAPIView(CreateAPIView):
@@ -31,9 +36,20 @@ class QuizCreateAPIView(CreateAPIView):
 
         if utils.filename:
             model = whisper.load_model("turbo")
-            result = model.transcribe(utils.filename)
+            transcribtion = model.transcribe(utils.filename)
 
-            return Response(result, status=status.HTTP_200_OK)
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=[
+                    json.dumps(transcribtion), json.dumps(utils.prompt)
+                ],
+                config={
+                    "response_mime_type": "application/json"
+                }
+            )
+
+            jsonresp = response.model_dump_json()
+            return Response(jsonresp, status=status.HTTP_200_OK)
 
 
 
