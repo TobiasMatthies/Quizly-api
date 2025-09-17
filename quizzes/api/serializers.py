@@ -10,6 +10,20 @@ class QuestionsListSerializer(serializers.ModelSerializer):
         model = Question
         fields = ['id', 'question_title', 'option1', 'option2', 'option3', 'option4', 'answer', 'created_at', 'updated_at']
 
+
+class QuestionCreateSerializer(serializers.ModelSerializer):
+    questions = serializers.ListField()
+    class Meta:
+        model = Question
+        fields = ['question_title', 'questions' 'answer']
+
+    def validate_questions(self, obj):
+        return True
+
+    def create(self, validated_data):
+        return super().create(validated_data)
+
+
 class QuizListSerializer(serializers.ModelSerializer):
     questions = serializers.SerializerMethodField()
 
@@ -22,10 +36,16 @@ class QuizListSerializer(serializers.ModelSerializer):
         return QuestionsListSerializer(questions, many=True).data
 
 class QuizCreateSerializer(serializers.ModelSerializer):
-    questions = serializers.ListField()
+    questions = QuestionCreateSerializer(many=True)
     class Meta:
         model = Quiz
         fields = ["video_url", "title", "description", "questions"]
 
     def create(self, validated_data):
-        return super().create(validated_data)
+        questions_data = validated_data.pop("questions")
+        quiz = Quiz.objects.create(**validated_data)
+
+        for question in questions_data:
+            Question.objects.create(question)
+
+        return quiz
