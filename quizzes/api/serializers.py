@@ -22,15 +22,10 @@ class QuizListSerializer(serializers.ModelSerializer):
         return QuestionsListSerializer(questions, many=True).data
 
 class QuizCreateSerializer(serializers.ModelSerializer):
-    url = serializers.URLField(source='video_url')
+    questions = serializers.ListField()
     class Meta:
         model = Quiz
-        fields = ['url']
+        fields = ["video_url", "title", "description", "questions"]
 
-    def validate_url(self, obj):
-        try:
-            response = requests.head(obj)
-            return obj
-
-        except Exception as e:
-            raise ValidationError(e)
+    def create(self, validated_data):
+        return super().create(validated_data)

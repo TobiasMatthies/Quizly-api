@@ -1,9 +1,11 @@
 import json
 
+import requests
 import whisper
 import yt_dlp
 from google import genai
 from rest_framework import status
+from rest_framework.exceptions import ValidationError
 from rest_framework.generics import CreateAPIView, ListAPIView
 from rest_framework.response import Response
 
@@ -23,11 +25,12 @@ class QuizCreateAPIView(CreateAPIView):
     serializer_class = QuizCreateSerializer
 
     def post(self, request):
-        serializer = self.get_serializer(data=request.data)
-        if not serializer.is_valid():
-            return Response({"detail": "invalid url"}, status=status.HTTP_400_BAD_REQUEST)
+        url = request.data["url"]
+        try:
+            response = requests.head(url)
 
-        url = serializer.validated_data["video_url"]
+        except Exception as e:
+            raise ValidationError(e)
 
         ydl_options["progress_hooks"] = [utils.audio_download_hook]
 
@@ -48,8 +51,17 @@ class QuizCreateAPIView(CreateAPIView):
                 }
             )
 
-            jsonresp = response.model_dump_json()
-            return Response(jsonresp, status=status.HTTP_200_OK)
+            json_string = response.candidates[0].content.parts[0].text
+            quiz_data = json.loads(json_string)
+            quiz_data["video_url"] = url
+
+            serializer = self.get_serializer(data=quiz_data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        return Response("message: could not generate quiz from video", status=status.HTTP_400_BAD_REQUEST)
 
 
 

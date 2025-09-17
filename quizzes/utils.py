@@ -37,6 +37,8 @@ Requirements:
 
 - The output must be valid JSON and parsable as-is (e.g., using Python's json.loads).
 
+- The answer field should have the exact same content as the right option
+
 - Do not include explanations, comments, or any text outside the JSON."""
 
 def audio_download_hook(d):
