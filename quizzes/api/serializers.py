@@ -12,15 +12,17 @@ class QuestionsListSerializer(serializers.ModelSerializer):
 
 
 class QuestionCreateSerializer(serializers.ModelSerializer):
-    questions = serializers.ListField()
+    question_options = serializers.ListField()
     class Meta:
         model = Question
-        fields = ['question_title', 'questions' 'answer']
-
-    def validate_questions(self, obj):
-        return True
+        fields = ['question_title', 'question_options', 'answer']
 
     def create(self, validated_data):
+        options = validated_data.pop("question_options")
+        validated_data["option1"] = options[0]
+        validated_data["option2"] = options[1]
+        validated_data["option3"] = options[2]
+        validated_data["option4"] = options[3]
         return super().create(validated_data)
 
 
@@ -36,16 +38,20 @@ class QuizListSerializer(serializers.ModelSerializer):
         return QuestionsListSerializer(questions, many=True).data
 
 class QuizCreateSerializer(serializers.ModelSerializer):
-    questions = QuestionCreateSerializer(many=True)
+    questions = QuestionCreateSerializer(many=True, write_only=True)
+    questions_data = QuestionsListSerializer(source="questions", many=True, read_only=True)
+
     class Meta:
         model = Quiz
-        fields = ["video_url", "title", "description", "questions"]
+        fields = ["video_url", "title", "description", "questions", "questions_data"]
 
     def create(self, validated_data):
         questions_data = validated_data.pop("questions")
         quiz = Quiz.objects.create(**validated_data)
 
-        for question in questions_data:
-            Question.objects.create(question)
+        for question_data in questions_data:
+            question_serializer = QuestionCreateSerializer(data=question_data)
+            question_serializer.is_valid(raise_exception=True)
+            question_serializer.save(quiz=quiz)
 
         return quiz
