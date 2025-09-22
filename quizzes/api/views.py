@@ -1,5 +1,6 @@
 import requests
 import yt_dlp
+from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import (CreateAPIView, ListAPIView,
@@ -57,9 +58,10 @@ class QuizListAPIView(ListAPIView):
 class QuizRetrieveUpdateDestroyAPIView(RetrieveUpdateDestroyAPIView):
     queryset = Quiz.objects.all()
     serializer_class = QuizListDetailSerializer
-    permission_classes = [IsQuizOwner]
+    permission_classes = [IsAuthenticatedFromCookie, IsQuizOwner]
 
     def get_object(self):
-        quiz = Quiz.objects.get(id=self.kwargs["id"])
+        quiz = get_object_or_404(Quiz, id=self.kwargs['id'])
+
         self.check_object_permissions(self.request, quiz)
         return quiz
