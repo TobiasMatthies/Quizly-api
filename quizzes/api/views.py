@@ -1,22 +1,19 @@
-import json
-
 import requests
-import whisper
 import yt_dlp
-from google import genai
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
-from rest_framework.generics import CreateAPIView, ListAPIView
+from rest_framework.generics import (CreateAPIView, ListAPIView,
+                                     RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
 
 from core.settings import ydl_opts as ydl_options
 from quizzes import utils
 from quizzes.models import Quiz
+from quizzes.utils import (audio_download_hook, generate_quiz,
+                           generate_transcribtion)
 
-from .permissions import IsAuthenticatedFromCookie
-from .serializers import QuizCreateSerializer, QuizListSerializer
-
-client = genai.Client()
+from .permissions import IsAuthenticatedFromCookie, IsQuizOwner
+from .serializers import QuizCreateSerializer, QuizListDetailSerializer
 
 
 class QuizCreateAPIView(CreateAPIView):
@@ -32,28 +29,14 @@ class QuizCreateAPIView(CreateAPIView):
         except Exception as e:
             raise ValidationError(e)
 
-        ydl_options["progress_hooks"] = [utils.audio_download_hook]
+        ydl_options["progress_hooks"] = [audio_download_hook]
 
         with yt_dlp.YoutubeDL(ydl_options) as ydl:
             error_code = ydl.download(url)
 
         if utils.filename:
-            model = whisper.load_model("turbo")
-            transcribtion = model.transcribe(utils.filename)
-
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=[
-                    json.dumps(transcribtion), json.dumps(utils.prompt)
-                ],
-                config={
-                    "response_mime_type": "application/json"
-                }
-            )
-
-            json_string = response.candidates[0].content.parts[0].text
-            quiz_data = json.loads(json_string)
-            quiz_data["video_url"] = url
+            transcribtion = generate_transcribtion()
+            quiz_data = generate_quiz(transcribtion, url)
 
             serializer = self.get_serializer(data=quiz_data)
             serializer.is_valid(raise_exception=True)
@@ -67,5 +50,16 @@ class QuizCreateAPIView(CreateAPIView):
 
 class QuizListAPIView(ListAPIView):
     queryset = Quiz.objects.all()
-    serializer_class = QuizListSerializer
+    serializer_class = QuizListDetailSerializer
     permission_classes = [IsAuthenticatedFromCookie]
+
+
+class QuizRetrieveUpdateDestroyAPIView(RetrieveUpdateDestroyAPIView):
+    queryset = Quiz.objects.all()
+    serializer_class = QuizListDetailSerializer
+    permission_classes = [IsQuizOwner]
+
+    def get_object(self):
+        quiz = Quiz.objects.get(id=self.kwargs["id"])
+        self.check_object_permissions(self.request, quiz)
+        return quiz

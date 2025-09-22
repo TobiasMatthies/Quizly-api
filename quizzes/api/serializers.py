@@ -26,7 +26,7 @@ class QuestionCreateSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
-class QuizListSerializer(serializers.ModelSerializer):
+class QuizListDetailSerializer(serializers.ModelSerializer):
     questions = serializers.SerializerMethodField()
 
     class Meta:
@@ -38,15 +38,16 @@ class QuizListSerializer(serializers.ModelSerializer):
         return QuestionsListSerializer(questions, many=True).data
 
 class QuizCreateSerializer(serializers.ModelSerializer):
-    questions = QuestionCreateSerializer(many=True, write_only=True)
-    questions_data = QuestionsListSerializer(source="questions", many=True, read_only=True)
+    questions_data = QuestionCreateSerializer(many=True, write_only=True)
+    questions = QuestionsListSerializer( many=True, read_only=True)
+    user = serializers.HiddenField(default=serializers.CurrentUserDefault())
 
     class Meta:
         model = Quiz
-        fields = ["video_url", "title", "description", "questions", "questions_data"]
+        fields = ["user", "video_url", "title", "description", "questions", "questions_data"]
 
     def create(self, validated_data):
-        questions_data = validated_data.pop("questions")
+        questions_data = validated_data.pop("questions_data")
         quiz = Quiz.objects.create(**validated_data)
 
         for question_data in questions_data:
