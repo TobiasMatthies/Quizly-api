@@ -50,9 +50,11 @@ class QuizCreateAPIView(CreateAPIView):
 
 
 class QuizListAPIView(ListAPIView):
-    queryset = Quiz.objects.all()
     serializer_class = QuizListDetailSerializer
     permission_classes = [IsAuthenticatedFromCookie]
+
+    def get_queryset(self):
+        return  Quiz.objects.all().filter(user=self.request.user)
 
 
 class QuizRetrieveUpdateDestroyAPIView(RetrieveUpdateDestroyAPIView):

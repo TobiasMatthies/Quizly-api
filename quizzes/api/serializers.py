@@ -6,9 +6,14 @@ from quizzes.models import Question, Quiz
 
 
 class QuestionsListSerializer(serializers.ModelSerializer):
+    question_options = serializers.SerializerMethodField()
+
     class Meta:
         model = Question
-        fields = ['id', 'question_title', 'option1', 'option2', 'option3', 'option4', 'answer', 'created_at', 'updated_at']
+        fields = ['id', 'question_title', 'answer', 'question_options', 'created_at', 'updated_at']
+
+    def get_question_options(self, obj):
+        return [obj.option1, obj.option2, obj.option3, obj.option4]
 
 
 class QuestionCreateSerializer(serializers.ModelSerializer):
